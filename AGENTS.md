@@ -1,0 +1,2 @@
+- You will read the "IMPLEMENTATION_SUMMARY.md" the first time before to make any work.
+- After you finish the implementation of new feature you will added to CHANGELOG.md, First read the file instad of overwrite it.

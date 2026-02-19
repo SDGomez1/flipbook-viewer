@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: "Archivo", "Avenir Next", "Segoe UI", sans-serif;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: #dbe8f2;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(42, 123, 158, 0.32), transparent 45%),
+      radial-gradient(circle at 85% 70%, rgba(16, 121, 133, 0.26), transparent 42%),
+      linear-gradient(180deg, #020d14 0%, #041824 34%, #083042 68%, #0b3d4d 100%);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@keyframes reveal-full {
+  from {
+    opacity: 0.2;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.page-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.page-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  height: 20px;
+  width: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: #c7e8ff;
+  box-shadow: 0 0 0 4px rgba(93, 157, 199, 0.35);
+}
+
+.page-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.page-slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: #c7e8ff;
+  box-shadow: 0 0 0 4px rgba(93, 157, 199, 0.35);
+}
