@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { documentConfig } from "../data/documentConfig";
 import {
   getNextPage,
   getPreviousPage,
@@ -17,6 +16,7 @@ type ViewerState = {
   isInteracting: boolean;
   goNext: () => void;
   goPrevious: () => void;
+  setTotalPages: (totalPages: number) => void;
   setCurrentPage: (page: number) => void;
   setMode: (mode: ViewerMode) => void;
   setZoom: (zoom: number) => void;
@@ -49,9 +49,17 @@ function roundPan(value: number): number {
   return Math.round(value * PAN_ROUNDING) / PAN_ROUNDING;
 }
 
+function normalizeTotalPages(totalPages: number): number {
+  if (!Number.isFinite(totalPages)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.floor(totalPages));
+}
+
 export const useViewerStore = create<ViewerState>((set) => ({
   currentPage: 1,
-  totalPages: documentConfig.totalPages,
+  totalPages: 1,
   mode: getInitialMode(),
   zoom: 1,
   panX: 0,
@@ -76,6 +84,19 @@ export const useViewerStore = create<ViewerState>((set) => ({
       );
 
       return { currentPage: previousPage };
+    }),
+  setTotalPages: (totalPages) =>
+    set((state) => {
+      const nextTotalPages = normalizeTotalPages(totalPages);
+
+      return {
+        totalPages: nextTotalPages,
+        currentPage: normalizePageForMode(
+          state.currentPage,
+          state.mode,
+          nextTotalPages
+        )
+      };
     }),
   setCurrentPage: (page) =>
     set((state) => ({

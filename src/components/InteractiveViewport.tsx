@@ -33,7 +33,6 @@ export function InteractiveViewport({
   children
 }: InteractiveViewportProps) {
   const settleTimerRef = useRef<number | null>(null);
-  const hasSwipedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -45,38 +44,55 @@ export function InteractiveViewport({
 
   const bind = useGesture(
     {
-      onDrag: ({ down, offset: [x, y], movement: [mx, my], last, event }) => {
+      onDrag: ({
+        down,
+        offset: [x, y],
+        movement: [mx, my],
+        swipe: [swipeX],
+        last,
+        event
+      }) => {
+        const isPointerEvent =
+          typeof PointerEvent !== "undefined" && event instanceof PointerEvent;
+        const pointerType = isPointerEvent ? event.pointerType : "mouse";
+        const isTouchLikePointer = pointerType === "touch" || pointerType === "pen";
+
         if (zoom <= 1) {
           setPan(0, 0);
           setIsInteracting(down);
 
-          const isPointerEvent = typeof PointerEvent !== "undefined" && event instanceof PointerEvent;
-          const pointerType = isPointerEvent ? event.pointerType : "mouse";
-          const isTouchLikePointer =
-            pointerType === "touch" || pointerType === "pen";
-
-          if (last && isTouchLikePointer && !hasSwipedRef.current) {
-            const absX = Math.abs(mx);
-            const absY = Math.abs(my);
-            const isHorizontalSwipe = absX >= 56 && absX > absY * 1.2;
-            if (isHorizontalSwipe) {
-              if (mx < 0) {
-                onSwipeNext?.();
-              } else {
-                onSwipePrevious?.();
+          if (last && isTouchLikePointer) {
+            if (swipeX < 0) {
+              onSwipeNext?.();
+            } else if (swipeX > 0) {
+              onSwipePrevious?.();
+            } else {
+              // Fallback when the drag didn't hit swipe velocity, but distance is clear.
+              const absX = Math.abs(mx);
+              const absY = Math.abs(my);
+              const isHorizontalSwipe = absX >= 56 && absX > absY * 1.2;
+              if (isHorizontalSwipe) {
+                if (mx < 0) {
+                  onSwipeNext?.();
+                } else {
+                  onSwipePrevious?.();
+                }
               }
-              hasSwipedRef.current = true;
             }
           }
 
           if (!down) {
             setIsInteracting(false);
-            hasSwipedRef.current = false;
           }
           return;
         }
 
-        setIsInteracting(down);
+        if (isTouchLikePointer && last) {
+          // Zoomed-in panning stays free-form; no page navigation while inspecting content.
+          setIsInteracting(false);
+        } else {
+          setIsInteracting(down);
+        }
         setPan(x, y);
       },
       onPinch: ({ offset: [scale], last }) => {
@@ -110,7 +126,11 @@ export function InteractiveViewport({
         from: () => [panX, panY],
         filterTaps: true,
         pointer: { touch: true },
-        axis: "lock"
+        swipe: {
+          distance: [56, 56],
+          velocity: [0.15, 0.15],
+          duration: 280
+        }
       },
       pinch: {
         from: () => [zoom, 0],

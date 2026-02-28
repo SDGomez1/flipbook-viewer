@@ -5,13 +5,13 @@ import {
   MIN_SPREAD_VIEWPORT_WIDTH,
   useViewerStore,
 } from "../store/viewerStore";
-import { documentConfig } from "../data/documentConfig";
 import {
   createDocumentResolver,
   detectPdfStrategy,
   StrategyDetectionResult,
 } from "../lib/documentResolver";
 import { canGoNext, canGoPrevious } from "../lib/viewerPagination";
+import { ViewerDocumentConfig } from "../types/viewerDocument";
 import { SpreadView } from "./SpreadView";
 import { InteractiveViewport } from "./InteractiveViewport";
 import { PageScrubber } from "./PageScrubber";
@@ -19,7 +19,11 @@ import { AppButton } from "./AppButton";
 
 type DetectionState = "idle" | "loading" | "ready" | "error";
 
-export function ViewerShell() {
+type ViewerShellProps = {
+  documentConfig: ViewerDocumentConfig;
+};
+
+export function ViewerShell({ documentConfig }: ViewerShellProps) {
   const {
     currentPage,
     totalPages,
@@ -30,6 +34,7 @@ export function ViewerShell() {
     isInteracting,
     goNext,
     goPrevious,
+    setTotalPages,
     setCurrentPage,
     setMode,
     setZoom,
@@ -40,7 +45,10 @@ export function ViewerShell() {
     resetZoom,
   } = useViewerStore();
 
-  const resolver = useMemo(() => createDocumentResolver(documentConfig), []);
+  const resolver = useMemo(
+    () => createDocumentResolver(documentConfig),
+    [documentConfig.baseUrl, documentConfig.name]
+  );
   const [canUseSpreadMode, setCanUseSpreadMode] = useState(() => {
     if (typeof window === "undefined") {
       return true;
@@ -57,6 +65,7 @@ export function ViewerShell() {
   const runDetection = useCallback(async () => {
     setDetectionState("loading");
     setDetectionError(null);
+    setDetectionResult(null);
 
     try {
       const result = await detectPdfStrategy(documentConfig);
@@ -69,11 +78,20 @@ export function ViewerShell() {
         error instanceof Error ? error.message : "Unknown detection error.",
       );
     }
-  }, []);
+  }, [
+    documentConfig.baseUrl,
+    documentConfig.name,
+    documentConfig.paddingDigits,
+    documentConfig.pdfStrategy
+  ]);
 
   useEffect(() => {
     void runDetection();
   }, [runDetection]);
+
+  useEffect(() => {
+    setTotalPages(documentConfig.totalPages);
+  }, [documentConfig.totalPages, setTotalPages]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

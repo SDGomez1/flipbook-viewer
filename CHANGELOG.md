@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-02-28 (Props-based Viewer Configuration)
+- Removed runtime document config resolution from URL query parameters.
+- Kept `src/data/documentConfig.ts` as a static local demo/default config source only.
+- Updated `App` to accept an optional `documentConfig` prop and pass it down to the viewer shell.
+- Updated `ViewerShell` to require `documentConfig` via props and use it for:
+  - URL resolver creation,
+  - PDF strategy detection,
+  - title/subtitle UI metadata.
+- Updated the viewer store to remove direct config imports and added `setTotalPages(totalPages)` so document length is injected at runtime from props.
+- Verified with `npm run build` (successful production build).
+
 ## 2026-02-28 (Mobile Responsiveness + Gesture Fixes)
 - Made viewer mode responsive to viewport width:
   - added `MIN_SPREAD_VIEWPORT_WIDTH` guard (`900px`),
@@ -9,6 +20,7 @@
 - Added mobile swipe navigation in `InteractiveViewport` when zoom is at fit level (`zoom <= 1`):
   - swipe left -> next page,
   - swipe right -> previous page.
+- Removed drag axis locking so panning follows real pointer movement (free-form horizontal/vertical/diagonal/circular motion).
 - Improved touch interaction handling to keep pinch/drag stable with explicit `touch-action: none` in the interactive viewport.
 - Updated stage/page sizing for better mobile fill behavior:
   - moved spread/page containers from hardcoded min-heights to responsive viewport-based height clamps,
