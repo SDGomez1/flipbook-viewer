@@ -31,6 +31,15 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
 const PAN_ROUNDING = 10;
+export const MIN_SPREAD_VIEWPORT_WIDTH = 900;
+
+function getInitialMode(): ViewerMode {
+  if (typeof window === "undefined") {
+    return "spread";
+  }
+
+  return window.innerWidth >= MIN_SPREAD_VIEWPORT_WIDTH ? "spread" : "single";
+}
 
 function clampZoom(zoom: number): number {
   return Math.min(Math.max(Number(zoom.toFixed(2)), MIN_ZOOM), MAX_ZOOM);
@@ -43,7 +52,7 @@ function roundPan(value: number): number {
 export const useViewerStore = create<ViewerState>((set) => ({
   currentPage: 1,
   totalPages: documentConfig.totalPages,
-  mode: "spread",
+  mode: getInitialMode(),
   zoom: 1,
   panX: 0,
   panY: 0,

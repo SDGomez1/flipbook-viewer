@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-02-28 (Mobile Responsiveness + Gesture Fixes)
+- Made viewer mode responsive to viewport width:
+  - added `MIN_SPREAD_VIEWPORT_WIDTH` guard (`900px`),
+  - default mode now initializes to `1P` on narrow screens,
+  - auto-forces back to `1P` (and resets zoom) when viewport becomes too narrow for `2P`.
+- Disabled `2P` mode selection in `Toolbar` when width is below the spread threshold, including a disabled-state hint title.
+- Added mobile swipe navigation in `InteractiveViewport` when zoom is at fit level (`zoom <= 1`):
+  - swipe left -> next page,
+  - swipe right -> previous page.
+- Improved touch interaction handling to keep pinch/drag stable with explicit `touch-action: none` in the interactive viewport.
+- Updated stage/page sizing for better mobile fill behavior:
+  - moved spread/page containers from hardcoded min-heights to responsive viewport-based height clamps,
+  - removed fixed page min-heights so pages can fill available stage space more naturally on small screens.
+- Updated app shell and base styles to use dynamic viewport units (`100dvh`) to improve sizing on mobile browser UI chrome changes.
+- Fixed pan-time image flicker in `PageView` by making image loading state depend on stable asset URLs (not recreated object references) and caching already-loaded image URLs so the low-res/current image remains visible while full-res resolves.
+- Verified with `npm run build` (successful production build).
+
+## 2026-02-28 (Runtime Remote Assets)
+- Added runtime document configuration overrides via URL query params so the viewer can load assets from external hosts (for example AWS/S3) without code edits.
+- Added parsing and validation helpers in `src/data/documentConfig.ts` for:
+  - `baseUrl` (alias: `assetsBaseUrl`)
+  - `name` (alias: `documentName`)
+  - `totalPages` (alias: `pages`)
+  - optional metadata: `id`/`documentId`, `title`, `subtitle`
+  - optional PDF hints: `pdfStrategy` (`auto`/`perPage`/`single`) and `paddingDigits` (`2`/`3`)
+- Updated the default subtitle to document the runtime query-param flow for remote assets.
+- Kept backward compatibility by exporting `documentConfig` as the resolved runtime config object.
+- Verified with `npm run build` (successful production build).
+
 ## 2026-02-18
 - Initialized the project from scratch with React + TypeScript + Vite.
 - Added a viewer-oriented app shell with Zustand state and Framer Motion transition scaffolding.

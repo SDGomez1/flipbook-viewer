@@ -196,7 +196,7 @@ export function SpreadView({
 
   return (
     <section
-      className="relative min-h-[760px] p-0 [perspective:1800px] max-[900px]:min-h-[620px] max-[640px]:min-h-[520px]"
+      className="relative h-[clamp(460px,74vh,860px)] w-full p-0 [perspective:1800px] max-[900px]:h-[clamp(380px,68vh,740px)] max-[640px]:h-[clamp(320px,62vh,660px)]"
       data-mode={mode}
     >
       {items.map((item) => {
@@ -223,7 +223,7 @@ export function SpreadView({
             }}
           >
             {item.kind === "single" ? (
-              <div className="grid h-full justify-center [grid-template-columns:minmax(0,760px)]">
+              <div className="mx-auto grid h-full w-full max-w-[760px] [grid-template-columns:minmax(0,1fr)]">
                 {(() => {
                   const assets = resolveAssets(item.page, resolver, detectionResult);
                   return (
@@ -239,7 +239,7 @@ export function SpreadView({
                 })()}
               </div>
             ) : (
-              <div className="grid h-full grid-cols-2 gap-6 max-[900px]:grid-cols-1">
+              <div className="grid h-full grid-cols-2 gap-4">
                 {(() => {
                   const leftAssets = resolveAssets(
                     item.leftPage,

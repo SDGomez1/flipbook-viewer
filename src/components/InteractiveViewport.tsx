@@ -9,6 +9,8 @@ type InteractiveViewportProps = PropsWithChildren<{
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
   setIsInteracting: (isInteracting: boolean) => void;
+  onSwipeNext?: () => void;
+  onSwipePrevious?: () => void;
 }>;
 
 const MIN_ZOOM = 1;
@@ -26,9 +28,12 @@ export function InteractiveViewport({
   setZoom,
   setPan,
   setIsInteracting,
+  onSwipeNext,
+  onSwipePrevious,
   children
 }: InteractiveViewportProps) {
   const settleTimerRef = useRef<number | null>(null);
+  const hasSwipedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -40,11 +45,33 @@ export function InteractiveViewport({
 
   const bind = useGesture(
     {
-      onDrag: ({ down, offset: [x, y] }) => {
+      onDrag: ({ down, offset: [x, y], movement: [mx, my], last, event }) => {
         if (zoom <= 1) {
+          setPan(0, 0);
+          setIsInteracting(down);
+
+          const isPointerEvent = typeof PointerEvent !== "undefined" && event instanceof PointerEvent;
+          const pointerType = isPointerEvent ? event.pointerType : "mouse";
+          const isTouchLikePointer =
+            pointerType === "touch" || pointerType === "pen";
+
+          if (last && isTouchLikePointer && !hasSwipedRef.current) {
+            const absX = Math.abs(mx);
+            const absY = Math.abs(my);
+            const isHorizontalSwipe = absX >= 56 && absX > absY * 1.2;
+            if (isHorizontalSwipe) {
+              if (mx < 0) {
+                onSwipeNext?.();
+              } else {
+                onSwipePrevious?.();
+              }
+              hasSwipedRef.current = true;
+            }
+          }
+
           if (!down) {
-            setPan(0, 0);
             setIsInteracting(false);
+            hasSwipedRef.current = false;
           }
           return;
         }
@@ -82,7 +109,8 @@ export function InteractiveViewport({
       drag: {
         from: () => [panX, panY],
         filterTaps: true,
-        pointer: { touch: true }
+        pointer: { touch: true },
+        axis: "lock"
       },
       pinch: {
         from: () => [zoom, 0],
@@ -105,7 +133,8 @@ export function InteractiveViewport({
 
   return (
     <div
-      className="cursor-grab touch-none overflow-hidden rounded-[10px] bg-transparent active:cursor-grabbing"
+      className="cursor-grab overflow-hidden rounded-[10px] bg-transparent active:cursor-grabbing"
+      style={{ touchAction: "none" }}
       {...bind()}
     >
       <div className="origin-center will-change-transform" style={transformStyle}>

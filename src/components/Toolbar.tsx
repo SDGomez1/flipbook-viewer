@@ -6,6 +6,7 @@ type ToolbarProps = {
   currentPage: number;
   totalPages: number;
   mode: ViewerMode;
+  canUseSpreadMode: boolean;
   zoom: number;
   canGoPrevious: boolean;
   canGoNext: boolean;
@@ -22,6 +23,7 @@ export function Toolbar({
   currentPage,
   totalPages,
   mode,
+  canUseSpreadMode,
   zoom,
   canGoPrevious,
   canGoNext,
@@ -68,8 +70,13 @@ export function Toolbar({
         <AppButton
           type="button"
           onClick={() => onModeChange("spread")}
-          active={mode === "spread"}
-          title="Spread mode"
+          active={mode === "spread" && canUseSpreadMode}
+          disabled={!canUseSpreadMode}
+          title={
+            canUseSpreadMode
+              ? "Spread mode"
+              : "Spread mode needs a wider viewport"
+          }
           className="px-2"
         >
           2P

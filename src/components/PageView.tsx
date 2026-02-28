@@ -17,6 +17,7 @@ type PageViewProps = {
 const HD_ZOOM_THRESHOLD = 1.6;
 const MAX_HD_MULTIPLIER = 6;
 const MAX_CANVAS_PIXELS = 32_000_000;
+const loadedImageUrlCache = new Set<string>();
 
 function loadImage(url: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -44,6 +45,8 @@ export function PageView({
   const [pdfError, setPdfError] = useState(false);
   const imageWrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const thumbUrl = assets?.thumbUrl ?? null;
+  const imageUrl = assets?.imageUrl ?? null;
 
   const shouldRenderPdf = useMemo(
     () =>
@@ -58,47 +61,53 @@ export function PageView({
   );
 
   useEffect(() => {
-    if (!assets || page === null) {
+    if (page === null || thumbUrl === null || imageUrl === null) {
       return;
     }
 
     let cancelled = false;
 
-    setThumbLoaded(false);
-    setFullLoaded(false);
+    setThumbLoaded(loadedImageUrlCache.has(thumbUrl));
+    setFullLoaded(loadedImageUrlCache.has(imageUrl));
     setThumbFailed(false);
     setFullFailed(false);
     setPdfReady(false);
     setPdfError(false);
 
-    void loadImage(assets.thumbUrl)
-      .then(() => {
-        if (!cancelled) {
-          setThumbLoaded(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setThumbFailed(true);
-        }
-      });
+    if (!loadedImageUrlCache.has(thumbUrl)) {
+      void loadImage(thumbUrl)
+        .then(() => {
+          if (!cancelled) {
+            loadedImageUrlCache.add(thumbUrl);
+            setThumbLoaded(true);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setThumbFailed(true);
+          }
+        });
+    }
 
-    void loadImage(assets.imageUrl)
-      .then(() => {
-        if (!cancelled) {
-          setFullLoaded(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFullFailed(true);
-        }
-      });
+    if (!loadedImageUrlCache.has(imageUrl)) {
+      void loadImage(imageUrl)
+        .then(() => {
+          if (!cancelled) {
+            loadedImageUrlCache.add(imageUrl);
+            setFullLoaded(true);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setFullFailed(true);
+          }
+        });
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [assets, page]);
+  }, [page, thumbUrl, imageUrl]);
 
   useEffect(() => {
     if (!shouldRenderPdf || page === null || pdfTarget === null) {
@@ -232,14 +241,14 @@ export function PageView({
     };
   }, [shouldRenderPdf, page, pdfTarget, zoom]);
 
-  const cardClass = `relative mx-auto flex min-h-[760px] w-full flex-col rounded-sm bg-[#f3c942] p-4 shadow-[0_28px_60px_rgba(0,0,0,0.55)] max-[900px]:min-h-[620px] max-[640px]:min-h-[520px] ${
+  const cardClass = `relative mx-auto flex h-full min-h-0 w-full flex-col rounded-sm bg-[#f3c942] p-3 shadow-[0_28px_60px_rgba(0,0,0,0.55)] max-[640px]:p-2 ${
     isCurrent ? "ring-1 ring-white/35" : "opacity-90"
   }`;
 
   if (page === null || assets === null) {
     return (
       <article
-        className="mx-auto flex min-h-[760px] w-full flex-col rounded-sm border border-dashed border-white/30 bg-[#1c3342aa] max-[900px]:min-h-[620px] max-[640px]:min-h-[520px]"
+        className="mx-auto flex h-full min-h-0 w-full flex-col rounded-sm border border-dashed border-white/30 bg-[#1c3342aa]"
         aria-hidden="true"
       >
         <div className="m-auto text-xs uppercase tracking-[0.08em] text-[#b8d0dd]">
@@ -256,7 +265,7 @@ export function PageView({
   return (
     <article className={cardClass}>
       <div
-        className="relative flex-1 overflow-hidden rounded-[2px] border border-[#5d4d1a] bg-[#101a22]"
+        className="relative flex-1 min-h-0 overflow-hidden rounded-[2px] border border-[#5d4d1a] bg-[#101a22]"
         ref={imageWrapRef}
       >
         {showThumb && (
@@ -273,7 +282,7 @@ export function PageView({
             src={assets.imageUrl}
             alt={`Page ${page}`}
             loading={isCurrent ? "eager" : "lazy"}
-            className="block h-full w-full animate-[reveal-full_180ms_ease-out] object-contain touch-none"
+            className="block h-full w-full animate-[reveal-full_180ms_ease-out] object-contain"
             draggable={false}
           />
         )}

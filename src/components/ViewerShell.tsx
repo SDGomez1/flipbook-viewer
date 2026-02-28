@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Toolbar } from "./Toolbar";
-import { useViewerStore } from "../store/viewerStore";
+import {
+  MIN_SPREAD_VIEWPORT_WIDTH,
+  useViewerStore,
+} from "../store/viewerStore";
 import { documentConfig } from "../data/documentConfig";
 import {
   createDocumentResolver,
@@ -38,10 +41,18 @@ export function ViewerShell() {
   } = useViewerStore();
 
   const resolver = useMemo(() => createDocumentResolver(documentConfig), []);
+  const [canUseSpreadMode, setCanUseSpreadMode] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+
+    return window.innerWidth >= MIN_SPREAD_VIEWPORT_WIDTH;
+  });
   const [detectionState, setDetectionState] = useState<DetectionState>("idle");
   const [detectionResult, setDetectionResult] =
     useState<StrategyDetectionResult | null>(null);
   const [detectionError, setDetectionError] = useState<string | null>(null);
+  const effectiveMode = canUseSpreadMode ? mode : "single";
 
   const runDetection = useCallback(async () => {
     setDetectionState("loading");
@@ -65,6 +76,71 @@ export function ViewerShell() {
   }, [runDetection]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => {
+      setCanUseSpreadMode(window.innerWidth >= MIN_SPREAD_VIEWPORT_WIDTH);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canUseSpreadMode && mode === "spread") {
+      setMode("single");
+      resetZoom();
+    }
+  }, [canUseSpreadMode, mode, resetZoom, setMode]);
+
+  const handleModeChange = useCallback(
+    (nextMode: "single" | "spread") => {
+      if (nextMode === "spread" && !canUseSpreadMode) {
+        return;
+      }
+
+      setMode(nextMode);
+    },
+    [canUseSpreadMode, setMode],
+  );
+
+  const handleNext = useCallback(() => {
+    if (!canUseSpreadMode && mode === "spread") {
+      setMode("single");
+      setCurrentPage(Math.min(currentPage + 1, totalPages));
+      return;
+    }
+
+    goNext();
+  }, [canUseSpreadMode, mode, setMode, setCurrentPage, currentPage, totalPages, goNext]);
+
+  const handlePrevious = useCallback(() => {
+    if (!canUseSpreadMode && mode === "spread") {
+      setMode("single");
+      setCurrentPage(Math.max(currentPage - 1, 1));
+      return;
+    }
+
+    goPrevious();
+  }, [canUseSpreadMode, mode, setMode, setCurrentPage, currentPage, goPrevious]);
+
+  const handleJumpToPage = useCallback(
+    (page: number) => {
+      if (!canUseSpreadMode && mode === "spread") {
+        setMode("single");
+      }
+
+      setCurrentPage(page);
+    },
+    [canUseSpreadMode, mode, setMode, setCurrentPage],
+  );
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.metaKey || event.ctrlKey) {
         return;
@@ -84,12 +160,12 @@ export function ViewerShell() {
         case "ArrowRight":
         case "PageDown":
           event.preventDefault();
-          goNext();
+          handleNext();
           break;
         case "ArrowLeft":
         case "PageUp":
           event.preventDefault();
-          goPrevious();
+          handlePrevious();
           break;
         case "+":
         case "=":
@@ -107,11 +183,11 @@ export function ViewerShell() {
           break;
         case "Home":
           event.preventDefault();
-          setCurrentPage(1);
+          handleJumpToPage(1);
           break;
         case "End":
           event.preventDefault();
-          setCurrentPage(totalPages);
+          handleJumpToPage(totalPages);
           break;
         default:
           break;
@@ -122,7 +198,7 @@ export function ViewerShell() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [goNext, goPrevious, zoomIn, zoomOut, resetZoom, setCurrentPage, totalPages]);
+  }, [handleJumpToPage, handleNext, handlePrevious, zoomIn, zoomOut, resetZoom, totalPages]);
 
   const strategyLabel =
     detectionResult?.pdfStrategy === "perPage"
@@ -133,41 +209,42 @@ export function ViewerShell() {
           ? "image-only fallback"
           : "detecting";
 
-  const canPrev = canGoPrevious(currentPage, mode, totalPages);
-  const canNext = canGoNext(currentPage, mode, totalPages);
+  const canPrev = canGoPrevious(currentPage, effectiveMode, totalPages);
+  const canNext = canGoNext(currentPage, effectiveMode, totalPages);
   const statusClass = "mt-3 text-center text-xs font-semibold text-[#b8d1e0]";
   const statusErrorClass = "text-[#ff9a9a]";
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-3 pb-6 pt-3">
+    <main className="relative min-h-[100dvh] overflow-hidden px-3 pb-6 pt-3">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(42,123,158,0.32),transparent_45%),radial-gradient(circle_at_85%_70%,rgba(16,121,133,0.26),transparent_42%),linear-gradient(180deg,#020d14_0%,#041824_34%,#083042_68%,#0b3d4d_100%)]" />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-1.5rem)] w-full max-w-[1300px] flex-col">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-1.5rem)] w-full max-w-[1300px] flex-col">
         <header className="mb-3 flex items-center justify-between gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9bb8c8]">
           <span>{documentConfig.title}</span>
           <span>
-            {mode === "spread" ? "Spread" : "Single"} | {strategyLabel}
+            {effectiveMode === "spread" ? "Spread" : "Single"} | {strategyLabel}
           </span>
         </header>
 
         <Toolbar
           currentPage={currentPage}
           totalPages={totalPages}
-          mode={mode}
+          mode={effectiveMode}
+          canUseSpreadMode={canUseSpreadMode}
           zoom={zoom}
           canGoPrevious={canPrev}
           canGoNext={canNext}
-          onPrevious={goPrevious}
-          onNext={goNext}
-          onModeChange={setMode}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onModeChange={handleModeChange}
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onResetZoom={resetZoom}
-          onJumpToPage={setCurrentPage}
+          onJumpToPage={handleJumpToPage}
         />
 
         <motion.section
-          key={`${mode}-${currentPage}`}
+          key={`${effectiveMode}-${currentPage}`}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -176,14 +253,14 @@ export function ViewerShell() {
           <AppButton
             type="button"
             disabled={!canPrev}
-            onClick={goPrevious}
+            onClick={handlePrevious}
             className="absolute left-2 z-20 h-12 w-8 rounded-full border-white/25 bg-[#6d8a9b80] px-0 text-lg font-black text-white max-[900px]:left-0 max-[900px]:h-10"
             title="Previous"
           >
             ❮
           </AppButton>
 
-          <div className="w-full max-w-[980px]">
+          <div className="w-full max-w-[980px] max-[900px]:px-1">
             <InteractiveViewport
               zoom={zoom}
               panX={panX}
@@ -192,9 +269,11 @@ export function ViewerShell() {
               setZoom={setZoom}
               setPan={setPan}
               setIsInteracting={setIsInteracting}
+              onSwipeNext={handleNext}
+              onSwipePrevious={handlePrevious}
             >
               <SpreadView
-                mode={mode}
+                mode={effectiveMode}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 zoom={zoom}
@@ -208,7 +287,7 @@ export function ViewerShell() {
           <AppButton
             type="button"
             disabled={!canNext}
-            onClick={goNext}
+            onClick={handleNext}
             className="absolute right-2 z-20 h-12 w-8 rounded-full border-white/25 bg-[#6d8a9b80] px-0 text-lg font-black text-white max-[900px]:right-0 max-[900px]:h-10"
             title="Next"
           >
@@ -219,7 +298,7 @@ export function ViewerShell() {
         <PageScrubber
           currentPage={currentPage}
           totalPages={totalPages}
-          onSelectPage={setCurrentPage}
+          onSelectPage={handleJumpToPage}
         />
 
         <div className="mx-auto mt-2 text-center text-[11px] text-[#9cb6c5]">
